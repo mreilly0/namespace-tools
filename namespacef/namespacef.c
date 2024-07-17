@@ -133,7 +133,8 @@ void search_files(const char* path) {
                     strncmp(full_path + full_path_len - 4, ".clj", 4) == 0) ||
                 (full_path_len > resource_name_len + 5 &&
                     strncmp(full_path + full_path_len - resource_name_len - 5, resource_name, resource_name_len) == 0 &&
-                    strncmp(full_path + full_path_len - 5, ".cljs", 5) == 0)) {
+                    (strncmp(full_path + full_path_len - 5, ".cljc", 5) == 0||
+                     strncmp(full_path + full_path_len - 5, ".cljs", 5) == 0))) {
                 verify(full_path);
             }
         }
