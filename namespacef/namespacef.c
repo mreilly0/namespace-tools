@@ -32,31 +32,71 @@ char* root_resource(const char* lib) {
     return result;
 }
 
+char* skip_whitespace(char* c) {
+  while (*c == '\n' || *c == ' ' || *c == '\t') {
+    c++;
+  }
+  return c;
+}
+
+char* skip_meta(char* c) {
+  if (*c != '^') return c;
+  c++;
+  char stop = *c == '{' ? '}' : ' ';
+  while (*c != stop) {
+    c++;
+  }
+  return c + 1;// skip stop char
+}
+
+char* skip_whitespace_or_meta(char *c) {
+  for (;;) {
+    char* start = c;
+    c=skip_whitespace(c);
+    c=skip_meta(c);
+    if (c == start) {
+      break;
+    }
+  }
+  return c;
+}
+
+char* find_namespace_start(char* clj_content) {
+  char* namespace_start = strstr(clj_content, "(ns");
+  if (namespace_start == NULL) return NULL;
+  namespace_start += 3; // skip "(ns"
+  if (*namespace_start == '\n' || *namespace_start == ' ' || *namespace_start == '\t') {
+    return skip_whitespace_or_meta(namespace_start);
+  } else return find_namespace_start(namespace_start);
+}
+
 char* namespace_name(char* clj_content) {
-    char* namespace_start = strstr(clj_content, "(ns ");
+    char* namespace_start = find_namespace_start(clj_content);//strstr(clj_content, "(ns ");
     if (namespace_start != NULL) {
-        namespace_start += 4; // Skip "(ns "
-        char* namespace_end = namespace_start;
-        while (*namespace_end != ' ' && *namespace_end != ')' && *namespace_end != '\n' && *namespace_end != '\r'  && *namespace_end != '\0') {
-            namespace_end++;
-        }
-        if (namespace_end != NULL) {
-            size_t length = namespace_end - namespace_start;// -1;
-            char* namespace_name = (char*)malloc(length + 1);
-            if (namespace_name != NULL) {
-                strncpy(namespace_name, namespace_start, length);
-                namespace_name[length] = '\0';
-                return namespace_name;
-            }
-        }
+      //      namespace_start += 4; // Skip "(ns "
+	char* namespace_end = namespace_start;
+	while (*namespace_end != ' ' && *namespace_end != ')' && *namespace_end != '\n' && *namespace_end != '\r'  && *namespace_end != '\0') {
+	    namespace_end++;
+	}
+	if (namespace_end != NULL) {
+	  *namespace_end='\0';
+	  return namespace_start;
+	    /* size_t length = namespace_end - namespace_start;// -1; */
+	    /* char* namespace_name = (char*)malloc(length + 1); */
+	    /* if (namespace_name != NULL) { */
+	    /* 	strncpy(namespace_name, namespace_start, length); */
+	    /* 	namespace_name[length] = '\0'; */
+	    /* 	return namespace_name; */
+	    /* } */
+	}
     }
     return NULL; // Namespace not found or memory allocation failed
 }
 
 
 int verify (char* full_path) {
-    long buffer_size = 0;
-    char *clj_content = NULL;
+    static long buffer_size = 0;
+    static char *clj_content = NULL;
 
     FILE *file = fopen(full_path, "r");
     if (file == NULL) {
@@ -71,7 +111,9 @@ int verify (char* full_path) {
 
     // Allocate memory for the entire file
     if (file_size > buffer_size){
-        clj_content = (char *)realloc(clj_content, file_size + 1);
+	buffer_size = file_size+1;
+        clj_content = (char *)realloc(clj_content, buffer_size);
+
     }
     if (clj_content == NULL) {
         perror("Memory allocation failed");
@@ -97,13 +139,13 @@ int verify (char* full_path) {
             printf("%s\n", full_path);
         }
 
-        free(extracted_namespace);
+	//        free(extracted_namespace);
     } else {
         printf("Namespace not found or memory allocation failed.\n");
     }
     fclose(file);
 
-    free(clj_content);
+    //free(clj_content);
     return 0;
 }
 
